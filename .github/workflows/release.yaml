@@ -1,0 +1,76 @@
+name: "release"
+
+on:
+  push:
+    tags:
+      - "*"
+
+jobs:
+
+  build:
+    name: Compile binaries
+    permissions:
+      contents: write
+    strategy:
+      matrix:
+        os: [ macos-latest, windows-latest ]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.8'
+          cache: pip
+      - name: Install dependencies
+        run: pip install setuptools wheel build twine pyside6 python-rtmidi
+      - uses: Nuitka/Nuitka-Action@main
+        with:
+          nuitka-version: main
+          script-name: mverb3
+          mode: app
+          enable-plugins: pyside6
+          macos-app-icon: resources/icon.icns
+          linux-icon: resources/icon.png
+          windows-icon-from-ico: resources/icon.ico
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ runner.os }} Build
+          path: |
+            build/*.exe
+            build/*.bin
+            build/*.app/**/*
+          include-hidden-files: true
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            *.zip
+            *.exe
+            *.app
+
+  pypi-publish:
+      name: Upload release to PyPI
+      runs-on: ubuntu-latest
+      environment:
+        name: pypi
+        url: https://pypi.org/project/jsonschema-gen/
+      permissions:
+        id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
+      steps:
+        - uses: actions/checkout@v4
+        - name: Set up Python
+          uses: actions/setup-python@v5
+          with:
+            python-version: '3.8'
+            cache: pip
+        - name: Install dependencies
+          run: pip install setuptools wheel build twine
+        - name: Build package
+          run: |
+            python -m build --wheel --outdir dist/
+            twine check dist/*.whl
+        - name: Publish on PyPi
+          uses: pypa/gh-action-pypi-publish@release/v1
+          with:
+            password: ${{ secrets.PYPI_API_TOKEN }}

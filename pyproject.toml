@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools >= 75.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "midiverb3"
+version = "1.0.1"
+requires-python = ">= 3.8"
+description = "Alesis MidiVerb III editor"
+authors = [
+  {name = "violet-black", email = "violetblackdev@gmail.com"}
+]
+readme = "README.md"
+license = {file = "LICENSE.txt"}
+keywords = ["reverb", "music"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python"
+]
+dependencies = [
+    "pyside6",
+    "python-rtmidi<2"
+]
+
+[project.optional-dependencies]
+docs = [
+    "sphinx"
+]
+
+[project.urls]
+Homepage = "https://github.com/violet-black/midiverb3"
+
+[project.gui-scripts]
+midiverb3 = "mverb3:main"
+
+[tool.setuptools.packages]
+find = {}
