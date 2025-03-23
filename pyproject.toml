@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "midiverb3"
-version = "1.0.2"
+version = "1.0.5"
 requires-python = ">= 3.8"
 description = "Alesis MidiVerb III editor"
 authors = [
