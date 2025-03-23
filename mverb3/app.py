@@ -320,7 +320,7 @@ class Device:
 
     def dump_current_program_to_file(self, file_path: Path) -> None:
         with open(file_path, "wb") as f:
-            f.write(bytes(self.dump_current_bank_to_syx()))
+            f.write(bytes(self.dump_program_to_syx()))
 
     def load_current_program_from_file(self, file_path: Path) -> None:
         with open(file_path, "rb") as f:
@@ -555,6 +555,7 @@ class Device:
         else:
             self._ui.DLY_TIME.setMaximum(100)
             self._ui.DLY_TIME.setValue(min(self._ui.DLY_TIME.value(), 490))
+        self._bank.edit_buffer.configuration = value
         self._queue.put_nowait((10, value))
 
     def on_mod_source_dest_change(self, *_) -> None:
