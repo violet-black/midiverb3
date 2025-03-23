@@ -14,8 +14,9 @@
       <excludeFolder url="file://$MODULE_DIR$/mverb3.egg-info" />
       <excludeFolder url="file://$MODULE_DIR$/mverb3.onefile-build" />
       <excludeFolder url="file://$MODULE_DIR$/midiverb3.egg-info" />
+      <excludeFolder url="file://$MODULE_DIR$/.venv" />
     </content>
-    <orderEntry type="jdk" jdkName="Python 3.8 (midiverb3)" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="Python 3.13 (midiverb3)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
 </module>
