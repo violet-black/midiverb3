@@ -345,14 +345,13 @@ class Device:
         return data
 
     def dump_program_to_bin(self, program: Program) -> List[int]:
-        return [
+        data = [
             *_dump_value(program.in_eq),
             *_dump_value(program.out_eq),
             *_dump_value(program.chrs_type),
             *_dump_value(program.chrs_speed),
-            0,
-            0,
-            *_dump_value(program.dly_time),
+            *_dump_value(program.dly_time & 0xf80),
+            *_dump_value(program.dly_time & 0x7f),
             *_dump_value(program.dly_regen),
             *_dump_value(program.rev_type),
             *_dump_value(program.rev_decay),
@@ -366,6 +365,7 @@ class Device:
             0,
             0,
         ]
+        return data
 
     def load_program_from_bin(self, data: Sequence[int]) -> Program:
         data = Program(
@@ -373,7 +373,7 @@ class Device:
             out_eq=_load_value(data[2], data[3]),
             chrs_type=_load_value(data[4], data[5]),
             chrs_speed=_load_value(data[6], data[7]),
-            dly_time=_load_value(data[10], data[11]),
+            dly_time=_load_value(data[10], data[8]),
             dly_regen=_load_value(data[12], data[13]),
             rev_type=_load_value(data[14], data[15]),
             rev_decay=_load_value(data[16], data[17]),

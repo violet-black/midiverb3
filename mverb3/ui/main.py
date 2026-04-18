@@ -18,8 +18,22 @@ from PySide6.QtGui import (QAction, QBrush, QColor, QConicalGradient,
     QTransform)
 from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QLabel,
     QMainWindow, QMenu, QMenuBar, QPushButton,
-    QSlider, QSizePolicy, QSpinBox, QStatusBar, QSlider,
+    QSizePolicy, QSpinBox, QStatusBar,
     QWidget)
+
+from PySide6.QtWidgets import QSlider as QSliderBase
+
+
+class QSlider(QSliderBase):
+    # Define a custom signal that will emit the new value when an arrow key is used.
+
+    def keyPressEvent(self, event):
+        if event.key() in (Qt.Key_Up, Qt.Key_Down, Qt.Key_Left, Qt.Key_Right):
+            super().keyPressEvent(event)
+            self.sliderReleased.emit()
+        else:
+            super().keyPressEvent(event)
+
 
 class Ui_UIMainWindow(object):
     def setupUi(self, UIMainWindow):
