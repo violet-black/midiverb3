@@ -16,7 +16,7 @@
       <excludeFolder url="file://$MODULE_DIR$/midiverb3.egg-info" />
       <excludeFolder url="file://$MODULE_DIR$/.venv" />
     </content>
-    <orderEntry type="jdk" jdkName="Python 3.13 (midiverb3)" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="Python 3.13 (midiverb3) (2)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
 </module>

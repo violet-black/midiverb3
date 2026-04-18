@@ -6,7 +6,7 @@ set -e
 
 # build system
 
-pip3 install -U pip setuptools wheel build twine nuitka
+uv pip install -U pip setuptools wheel build twine nuitka
 
 # build python package version
 

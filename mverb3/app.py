@@ -3,7 +3,6 @@ from dataclasses import dataclass, asdict
 from pathlib import Path
 from threading import Thread, Lock
 from typing import Union, List, Sequence, Tuple
-from queue import Queue
 from time import sleep
 
 import rtmidi
@@ -100,7 +99,7 @@ class Device:
     SETTINGS = "settings.json"
     CURRENT_BANK = "bank.syx"
     PROG_NUM = 100
-    REFRESH_RATE_MS = 100
+    REFRESH_RATE_MS = 50
     HELP_URL = "https://github.com/violet-black/midiverb3"
 
     PROG_MAP_TABLE = []
@@ -120,10 +119,10 @@ class Device:
 
     def __init__(self, window: _MainWindow):
         self._window = window
-        self._ui = window._ui
+        self._ui = window._ui  # noqa
         self._midi_lock = Lock()
-        self._queue = Queue()
-        self._midi_thread: Thread = Thread(target=self._process_message_queue, args=(self._queue,), daemon=True)
+        self._queue: dict[int, int] = {}
+        self._midi_thread: Thread = Thread(target=self._process_message_queue, daemon=True)
         self._midi_in = rtmidi.MidiIn()
         self._midi_out = rtmidi.MidiOut()
         self.init()
@@ -145,20 +144,20 @@ class Device:
         self._ui.CONFIGURATION.currentIndexChanged.connect(self.on_configuration_change)
         self._ui.PROG_SYNC.clicked.connect(self.send_current_program_to_device_buffer)
         self._ui.PROG_RECALL.clicked.connect(self.recall_stored_program)
-        self._ui.IN_EQ.valueChanged.connect(self.on_in_eq_change)
+        self._ui.IN_EQ.sliderReleased.connect(self.on_in_eq_change)
         self._ui.CHRS_TYPE.currentIndexChanged.connect(self.on_chrs_type_change)
         self._ui.CHRS_STEREO.stateChanged.connect(self.on_chrs_type_change)
-        self._ui.CHRS_SPEED.valueChanged.connect(self.on_chrs_speed_change)
-        self._ui.DLY_TIME.valueChanged.connect(self.on_dly_time_change)
-        self._ui.DLY_REGEN.valueChanged.connect(self.on_dly_regen_change)
-        self._ui.DLY_MIX.valueChanged.connect(self.on_dly_mix_change)
+        self._ui.CHRS_SPEED.sliderReleased.connect(self.on_chrs_speed_change)
+        self._ui.DLY_TIME.sliderReleased.connect(self.on_dly_time_change)
+        self._ui.DLY_REGEN.sliderReleased.connect(self.on_dly_regen_change)
+        self._ui.DLY_MIX.sliderReleased.connect(self.on_dly_mix_change)
         self._ui.REVERB_TYPE.currentIndexChanged.connect(self.on_rev_type_change)
-        self._ui.REV_DECAY.valueChanged.connect(self.on_rev_decay_change)
-        self._ui.REV_MIX.valueChanged.connect(self.on_rev_mix_change)
-        self._ui.OUT_EQ.valueChanged.connect(self.on_out_eq_change)
+        self._ui.REV_DECAY.sliderReleased.connect(self.on_rev_decay_change)
+        self._ui.REV_MIX.sliderReleased.connect(self.on_rev_mix_change)
+        self._ui.OUT_EQ.sliderReleased.connect(self.on_out_eq_change)
         self._ui.MOD_SOURCE.currentIndexChanged.connect(self.on_mod_source_dest_change)
         self._ui.MOD_DEST.currentIndexChanged.connect(self.on_mod_source_dest_change)
-        self._ui.MOD_AMT.valueChanged.connect(self.on_mod_amount_change)
+        self._ui.MOD_AMT.sliderReleased.connect(self.on_mod_amount_change)
 
     def init(self) -> None:
         self.load_settings()
@@ -169,10 +168,9 @@ class Device:
         else:
             self.load_current_bank_from_file(self._settings.bank_path)
         self._midi_thread.start()
-        self._clear_queue()
+        self._queue.clear()
 
     def close(self) -> None:
-        self._queue.join()
         self._midi_thread.join(timeout=1.0)
         with self._midi_lock:
             self._midi_in.close_port()
@@ -189,7 +187,7 @@ class Device:
         if self._settings.midi_in_port not in ports:
             return
         self._midi_in.open_port(ports.index(self._settings.midi_in_port))
-        self._clear_queue()
+        self._queue.clear()
 
     def open_midi_out(self) -> None:
         if not self._settings.midi_out_port:
@@ -199,7 +197,7 @@ class Device:
         if self._settings.midi_out_port not in ports:
             return
         self._midi_out.open_port(ports.index(self._settings.midi_out_port))
-        self._clear_queue()
+        self._queue.clear()
 
     def load_settings(self) -> None:
         _path = self.PATH / self.SETTINGS
@@ -282,7 +280,7 @@ class Device:
 
     def load_current_bank_from_syx(self, data: Sequence[int]) -> None:
         self._bank = self.load_bank_from_bin(data[6:-1])
-        self._clear_queue()
+        self._queue.clear()
         self.send_current_program_id_to_device()
         self.send_current_program_to_device_buffer()
         self.refresh_ui()
@@ -329,7 +327,7 @@ class Device:
     def load_current_program_from_syx(self, data: Sequence[int]) -> None:
         data = self.load_program_from_bin(data[7:-1])
         self._bank.edit_buffer = data
-        self._clear_queue()
+        self._queue.clear()
         self.send_current_program_to_device_buffer()
         self.refresh_ui()
 
@@ -492,61 +490,61 @@ class Device:
         value = self._ui.IN_EQ.value()
         self._ui.IN_EQ_L.setText(str(value))
         self._bank.edit_buffer.in_eq = value
-        self._queue.put_nowait((0, value))
+        self._queue[0] = value
 
     def on_out_eq_change(self, *_) -> None:
         value = self._ui.OUT_EQ.value()
         self._ui.OUT_EQ_L.setText(str(value))
         self._bank.edit_buffer.out_eq = value
-        self._queue.put_nowait((1, value))
+        self._queue[1] = value
 
     def on_chrs_type_change(self, *_) -> None:
         value = self._ui.CHRS_TYPE.currentIndex()
         modifier = self._ui.CHRS_STEREO.isChecked()
         value = value * 2 + modifier
         self._bank.edit_buffer.chrs_type = value
-        self._queue.put_nowait((2, value))
+        self._queue[2] = value
 
     def on_chrs_speed_change(self, *_) -> None:
         value = self._ui.CHRS_SPEED.value()
         self._ui.CHRS_SPEED_L.setText(str(value))
         self._bank.edit_buffer.chrs_speed = value
-        self._queue.put_nowait((3, value))
+        self._queue[3] = value
 
     def on_dly_time_change(self, *_) -> None:
         value = self._ui.DLY_TIME.value()
         self._ui.DLY_TIME_L.setText(str(value))
         self._bank.edit_buffer.dly_time = value
-        self._queue.put_nowait((4, value))
+        self._queue[4] = value
 
     def on_dly_regen_change(self, *_) -> None:
         value = self._ui.DLY_REGEN.value()
         self._ui.DLY_REGEN_L.setText(str(value))
         self._bank.edit_buffer.dly_regen = value
-        self._queue.put_nowait((5, value))
+        self._queue[5] = value
 
     def on_rev_type_change(self, *_) -> None:
         value = self._ui.REVERB_TYPE.currentIndex()
         self._bank.edit_buffer.rev_type = value
-        self._queue.put_nowait((6, value))
+        self._queue[6] = value
 
     def on_rev_decay_change(self, *_) -> None:
         value = self._ui.REV_DECAY.value()
         self._ui.REV_DECAY_L.setText(str(value))
         self._bank.edit_buffer.rev_decay = value
-        self._queue.put_nowait((7, value))
+        self._queue[7] = value
 
     def on_rev_mix_change(self, *_) -> None:
         value = self._ui.REV_MIX.value()
         self._ui.REV_MIX_L.setText(str(value))
         self._bank.edit_buffer.rev_mix = value
-        self._queue.put_nowait((8, value))
+        self._queue[8] = value
 
     def on_dly_mix_change(self, *_) -> None:
         value = self._ui.DLY_MIX.value()
         self._ui.DLY_MIX_L.setText(str(value))
         self._bank.edit_buffer.dly_mix = value
-        self._queue.put_nowait((9, value))
+        self._queue[9] = value
 
     def on_configuration_change(self, *_) -> None:
         value = self._ui.CONFIGURATION.currentIndex()
@@ -556,7 +554,7 @@ class Device:
             self._ui.DLY_TIME.setMaximum(100)
             self._ui.DLY_TIME.setValue(min(self._ui.DLY_TIME.value(), 490))
         self._bank.edit_buffer.configuration = value
-        self._queue.put_nowait((10, value))
+        self._queue[10] = value
 
     def on_mod_source_dest_change(self, *_) -> None:
         value = self._ui.MOD_SOURCE.currentIndex()
@@ -574,13 +572,13 @@ class Device:
                 modifier -= 1
             value = modifier * 8 + value
         self._bank.edit_buffer.mod_routing = value
-        self._queue.put_nowait((11, value))
+        self._queue[11] = value
 
     def on_mod_amount_change(self, *_) -> None:
         value = self._ui.MOD_AMT.value()
         self._ui.MOD_AMT_L.setText(str(value - 99))
         self._bank.edit_buffer.mod_amount = value
-        self._queue.put_nowait((12, value))
+        self._queue[12] = value
 
     def on_program_change(self, *_) -> None:
         value = self._ui.PROGRAM_ID.value()
@@ -588,6 +586,7 @@ class Device:
         self._bank.edit_buffer = Program(
             **asdict(self._bank.programs[self._bank.program_id])
         )
+        self._queue.clear()
         self.send_current_program_id_to_device()
         if self._settings.auto_send_buffer_on_prog_change:
             self.send_current_program_to_device_buffer()
@@ -696,35 +695,26 @@ class Device:
                 'and that the proper MIDI ports and the channel are provided in the application settings.')
             box.exec_()
 
-    def _process_message_queue(self, queue: Queue) -> None:
+    def _process_message_queue(self) -> None:
         """Send data to the device.
 
         Send interval `midi_refresh_rate_ms` is set in app settings. Messages are deduplicated — only the last
         message for each param is sent.
         """
-        data = {}
         header = (0xF0, *self.MANUFACTURER_ID, self.DEVICE_ID, 0x03)
         while True:
-            if not queue.empty():
-                for _ in range(queue.qsize()):
-                    param_id, value = queue.get_nowait()
-                    queue.task_done()
-                    data[param_id] = value
-                if data:
-                    with self._midi_lock:
-                        for param_id, value in data.items():
-                            self._send_message(
-                                [*header, param_id, *_dump_value(value), 0xF7]
-                            )
-                            sleep(0.05)  # service guide recommended timeout
-                data.clear()
-            sleep(0.05)
+            _queue = {}
+            while self._queue:
+                param_id, value = self._queue.popitem()
+                _queue[param_id] = value
+            with self._midi_lock:
+                for param_id, value in _queue.items():
+                    self._send_message([*header, param_id, *_dump_value(value), 0xF7])
+                    sleep(0.025)
+            sleep(self.REFRESH_RATE_MS / 1000)
 
     def _send_message(self, message: Sequence[Union[bytes, int]]) -> None:
-        if self._midi_out:
-            return self._midi_out.send_message(message)
-
-    def _clear_queue(self) -> None:
-        for _ in range(self._queue.qsize()):
-            param_id, value = self._queue.get_nowait()
-            self._queue.task_done()
+        if not self._midi_out:
+            return None
+        print(message)
+        return self._midi_out.send_message(message)
