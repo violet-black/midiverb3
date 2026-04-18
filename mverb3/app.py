@@ -640,7 +640,7 @@ class Device:
             self._send_message(
                 (0xC0 + self._settings.midi_channel, self._bank.program_id)
             )
-            sleep(0.33)
+            sleep(0.05)
 
     def send_current_program_to_device_buffer(self) -> None:
         with self._midi_lock:
