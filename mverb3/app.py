@@ -115,6 +115,7 @@ class Device:
     """
 
     _bank: Bank
+    _program_names: list[str]
     _settings: Settings
 
     def __init__(self, window: _MainWindow):
@@ -158,6 +159,11 @@ class Device:
         self._ui.MOD_SOURCE.currentIndexChanged.connect(self.on_mod_source_dest_change)
         self._ui.MOD_DEST.currentIndexChanged.connect(self.on_mod_source_dest_change)
         self._ui.MOD_AMT.sliderReleased.connect(self.on_mod_amount_change)
+        self._ui.PROG_NAME.textEdited.connect(self.on_program_name_change)
+
+    def on_program_name_change(self, *_):
+        name = self._ui.PROG_NAME.text()
+        self._program_names[self._bank.program_id] = name
 
     def init(self) -> None:
         self.load_settings()
@@ -242,6 +248,7 @@ class Device:
         with open(fp, "wb") as f:
             f.write(BANK)
         self._settings.bank_path = str(fp)
+        self._program_names = ['---' for n in range(self.PROG_NUM)]
         self.load_current_bank_from_syx(BANK)
 
     def recall_stored_program(self) -> None:
@@ -256,8 +263,15 @@ class Device:
             **asdict(self._bank.edit_buffer)
         )
         self.dump_current_bank_to_file(self._settings.bank_path)
+        self.save_program_names(Path(self._settings.bank_path))
         if self._settings.auto_send_prog_to_device_on_save:
             self.save_buffer_to_device_program_slot()
+
+    def save_program_names(self, fp: Path):
+        bank_filenames_fp = fp.parent / f'{fp.stem}.txt'
+        with open(bank_filenames_fp, 'w') as f:
+            for name in self._program_names:
+                f.write(name.strip() + '\n')
 
     def dump_current_bank_to_file(self, fp: Union[Path, str]) -> None:
         with open(fp, "wb") as f:
@@ -265,6 +279,7 @@ class Device:
 
     def load_current_bank_from_file(self, fp: Union[Path, str]) -> None:
         with open(fp, "rb") as f:
+            self.load_program_names(Path(fp))
             self.load_current_bank_from_syx(f.read())
 
     def dump_current_bank_to_syx(self) -> List[int]:
@@ -350,8 +365,8 @@ class Device:
             *_dump_value(program.out_eq),
             *_dump_value(program.chrs_type),
             *_dump_value(program.chrs_speed),
-            *_dump_value(program.dly_time & 0xf80),
-            *_dump_value(program.dly_time & 0x7f),
+            *_dump_value(program.dly_time >> 8),
+            *_dump_value(program.dly_time),
             *_dump_value(program.dly_regen),
             *_dump_value(program.rev_type),
             *_dump_value(program.rev_decay),
@@ -368,12 +383,15 @@ class Device:
         return data
 
     def load_program_from_bin(self, data: Sequence[int]) -> Program:
+        dly_time_msb = _load_value(data[8], 0)
+        dly_time_lsb = _load_value(data[10], data[11])
+        dly_time = (dly_time_msb << 8) | dly_time_lsb
         data = Program(
             in_eq=_load_value(data[0], data[1]),
             out_eq=_load_value(data[2], data[3]),
             chrs_type=_load_value(data[4], data[5]),
             chrs_speed=_load_value(data[6], data[7]),
-            dly_time=_load_value(data[10], data[8]),
+            dly_time=dly_time,
             dly_regen=_load_value(data[12], data[13]),
             rev_type=_load_value(data[14], data[15]),
             rev_decay=_load_value(data[16], data[17]),
@@ -396,7 +414,9 @@ class Device:
                 if data[:6] == bytes(
                     [0xF0, *self.MANUFACTURER_ID, self.DEVICE_ID, 0x00]
                 ):
+                    self._settings.bank_path = str(fp)
                     self.load_current_bank_from_syx(data)
+                    self.load_program_filenames(fp)
                 elif data[:6] == bytes(
                     [0xF0, *self.MANUFACTURER_ID, self.DEVICE_ID, 0x01]
                 ):
@@ -408,6 +428,20 @@ class Device:
                         'Only MidiVerb III sysex banks or programs with the proper device id are supported. '
                         'Are you sure you are trying to open a MidiVerb III file?')
                     box.exec_()
+
+    def load_program_names(self, fp: Path) -> None:
+        bank_filenames_fp = fp.parent / f'{fp.stem}.txt'
+        self._program_names = ['---' for _ in range(self.PROG_NUM)]
+
+        if not bank_filenames_fp.exists():
+            return
+
+        with open(bank_filenames_fp, 'r') as f:
+            for n, s in enumerate(f.readlines()):
+                s = s.strip()
+                if not s:
+                    continue
+                self._program_names[n] = s
 
     def open_program_export_dlg(self, *_) -> None:
         dlg = QFileDialog(self._window)
@@ -596,6 +630,11 @@ class Device:
         blockers = [
             QSignalBlocker(widget) for widget in self._window.findChildren(QWidget)
         ]
+        value = self._bank.edit_buffer.configuration
+        if value == 13 or value == 14:
+            self._ui.DLY_TIME.setMaximum(490)
+        else:
+            self._ui.DLY_TIME.setMaximum(100)
         self._ui.IN_EQ.setValue(self._bank.edit_buffer.in_eq)
         self._ui.IN_EQ_L.setText(str(self._bank.edit_buffer.in_eq))
         self._ui.OUT_EQ.setValue(self._bank.edit_buffer.out_eq)
@@ -633,6 +672,7 @@ class Device:
         self._ui.CONFIGURATION.setCurrentIndex(self._bank.edit_buffer.configuration)
         self._ui.PROGRAM_ID.setValue(self._bank.program_id + self.PROG_NUM)
         self._ui.BANK_PATH.setText(self._settings.bank_path)
+        self._ui.PROG_NAME.setText(self._program_names[self._bank.program_id])
         blockers.clear()
 
     def send_current_program_id_to_device(self) -> None:

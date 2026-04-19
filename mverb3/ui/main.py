@@ -16,7 +16,7 @@ from PySide6.QtGui import (QAction, QBrush, QColor, QConicalGradient,
     QIcon, QImage, QKeySequence, QLinearGradient,
     QPainter, QPalette, QPixmap, QRadialGradient,
     QTransform)
-from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QLabel,
+from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QLabel, QLineEdit,
     QMainWindow, QMenu, QMenuBar, QPushButton,
     QSizePolicy, QSpinBox, QStatusBar,
     QWidget)
@@ -445,6 +445,12 @@ class Ui_UIMainWindow(object):
         self.BANK_PATH.setLocale(QLocale(QLocale.English, QLocale.UnitedKingdom))
         self.BANK_PATH.setAlignment(Qt.AlignLeading|Qt.AlignLeft|Qt.AlignVCenter)
         self.BANK_PATH.setWordWrap(True)
+        self.PROG_NAME = QLineEdit(self.centralwidget)
+        self.PROG_NAME.setObjectName(u"PROG_NAME")
+        self.PROG_NAME.setGeometry(QRect(20, 290, 451, 31))
+        # self.PROG_NAME.setFocusPolicy(Qt.NoFocus)
+        self.PROG_NAME.setLocale(QLocale(QLocale.English, QLocale.UnitedKingdom))
+        self.PROG_NAME.setAlignment(Qt.AlignLeading|Qt.AlignLeft|Qt.AlignVCenter)
         self.PROGRAM_ID = QSpinBox(self.centralwidget)
         self.PROGRAM_ID.setObjectName(u"PROGRAM_ID")
         self.PROGRAM_ID.setGeometry(QRect(500, 267, 41, 21))
@@ -700,6 +706,7 @@ class Ui_UIMainWindow(object):
 #if QT_CONFIG(tooltip)
         self.BANK_PATH.setToolTip(QCoreApplication.translate("UIMainWindow", u"Loaded bank path", None))
 #endif // QT_CONFIG(tooltip)
+        self.PROG_NAME.setText(QCoreApplication.translate("UIMainWindow", u"---", None))
         self.BANK_PATH.setText(QCoreApplication.translate("UIMainWindow", u"DEFAULT BANK", None))
 #if QT_CONFIG(tooltip)
         self.PROG_RECALL.setToolTip(QCoreApplication.translate("UIMainWindow", u"Discard the buffer and recall the stored program", None))
