@@ -14,6 +14,7 @@ from mverb3.bank import BANK
 from mverb3.ui.main import Ui_UIMainWindow
 from mverb3.ui.settings import Ui_SETTINGS
 from mverb3.ui.about import Ui_AboutDialog
+from mverb3.data import EQ, CHORUS_ALGORITHMS, REVERB_ALGORITHMS, MODULATION_SOURCES, MODULATION_DESTINATIONS
 
 __all__ = ["Program", "Bank", "Settings", "Device"]
 
@@ -416,7 +417,7 @@ class Device:
                 ):
                     self._settings.bank_path = str(fp)
                     self.load_current_bank_from_syx(data)
-                    self.load_program_filenames(fp)
+                    self.load_program_names(fp)
                 elif data[:6] == bytes(
                     [0xF0, *self.MANUFACTURER_ID, self.DEVICE_ID, 0x01]
                 ):
@@ -522,19 +523,22 @@ class Device:
 
     def on_in_eq_change(self, *_) -> None:
         value = self._ui.IN_EQ.value()
-        self._ui.IN_EQ_L.setText(str(value))
+        label = EQ[value]
+        self._ui.IN_EQ_L.setText(label)
         self._bank.edit_buffer.in_eq = value
         self._queue[0] = value
 
     def on_out_eq_change(self, *_) -> None:
         value = self._ui.OUT_EQ.value()
-        self._ui.OUT_EQ_L.setText(str(value))
+        label = EQ[value]
+        self._ui.OUT_EQ_L.setText(label)
         self._bank.edit_buffer.out_eq = value
         self._queue[1] = value
 
     def on_chrs_type_change(self, *_) -> None:
         value = self._ui.CHRS_TYPE.currentIndex()
         modifier = self._ui.CHRS_STEREO.isChecked()
+        self._ui.CHRS_TYPE.setToolTip(CHORUS_ALGORITHMS[value]['characteristics'])
         value = value * 2 + modifier
         self._bank.edit_buffer.chrs_type = value
         self._queue[2] = value
@@ -561,6 +565,7 @@ class Device:
         value = self._ui.REVERB_TYPE.currentIndex()
         self._bank.edit_buffer.rev_type = value
         self._queue[6] = value
+        self._ui.REVERB_TYPE.setToolTip(REVERB_ALGORITHMS[value]['characteristics'])
 
     def on_rev_decay_change(self, *_) -> None:
         value = self._ui.REV_DECAY.value()
@@ -591,7 +596,7 @@ class Device:
         self._queue[10] = value
 
     def on_mod_source_dest_change(self, *_) -> None:
-        value = self._ui.MOD_SOURCE.currentIndex()
+        value = src = self._ui.MOD_SOURCE.currentIndex()
         modifier = self._ui.MOD_DEST.currentIndex()
         if modifier == 0:
             # OFF switch
@@ -606,6 +611,8 @@ class Device:
                 modifier -= 1
             value = modifier * 8 + value
         self._bank.edit_buffer.mod_routing = value
+        self._ui.MOD_SOURCE.setToolTip(MODULATION_SOURCES[src]['description'])
+        self._ui.MOD_DEST.setToolTip(MODULATION_DESTINATIONS[modifier]['description'])
         self._queue[11] = value
 
     def on_mod_amount_change(self, *_) -> None:
@@ -636,10 +643,11 @@ class Device:
         else:
             self._ui.DLY_TIME.setMaximum(100)
         self._ui.IN_EQ.setValue(self._bank.edit_buffer.in_eq)
-        self._ui.IN_EQ_L.setText(str(self._bank.edit_buffer.in_eq))
+        self._ui.IN_EQ_L.setText(EQ[self._bank.edit_buffer.in_eq])
         self._ui.OUT_EQ.setValue(self._bank.edit_buffer.out_eq)
-        self._ui.OUT_EQ_L.setText(str(self._bank.edit_buffer.out_eq))
+        self._ui.OUT_EQ_L.setText(EQ[self._bank.edit_buffer.out_eq])
         self._ui.CHRS_TYPE.setCurrentIndex(self._bank.edit_buffer.chrs_type // 2)
+        self._ui.CHRS_TYPE.setToolTip(CHORUS_ALGORITHMS[self._bank.edit_buffer.chrs_type // 2]['characteristics'])
         self._ui.CHRS_STEREO.setChecked(self._bank.edit_buffer.chrs_type % 2)
         self._ui.CHRS_SPEED.setValue(self._bank.edit_buffer.chrs_speed)
         self._ui.CHRS_SPEED_L.setText(str(self._bank.edit_buffer.chrs_speed))
@@ -654,6 +662,7 @@ class Device:
         self._ui.REV_MIX.setValue(self._bank.edit_buffer.rev_mix)
         self._ui.REV_MIX_L.setText(str(self._bank.edit_buffer.rev_mix))
         self._ui.REVERB_TYPE.setCurrentIndex(self._bank.edit_buffer.rev_type)
+        self._ui.REVERB_TYPE.setToolTip(REVERB_ALGORITHMS[self._bank.edit_buffer.rev_type]['characteristics'])
         self._ui.MOD_AMT.setValue(self._bank.edit_buffer.mod_amount)
         self._ui.MOD_AMT_L.setText(str(self._bank.edit_buffer.mod_amount - 99))
         if self._bank.edit_buffer.mod_routing == 0:
@@ -669,6 +678,8 @@ class Device:
             self._ui.MOD_DEST.setCurrentIndex(
                 self._bank.edit_buffer.mod_routing // 8 + 1
             )
+        self._ui.MOD_SOURCE.setToolTip(MODULATION_SOURCES[self._ui.MOD_SOURCE.currentIndex()]['description'])
+        self._ui.MOD_DEST.setToolTip(MODULATION_DESTINATIONS[self._ui.MOD_DEST.currentIndex()]['description'])
         self._ui.CONFIGURATION.setCurrentIndex(self._bank.edit_buffer.configuration)
         self._ui.PROGRAM_ID.setValue(self._bank.program_id + self.PROG_NUM)
         self._ui.BANK_PATH.setText(self._settings.bank_path)
