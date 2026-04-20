@@ -90,6 +90,7 @@ class Settings:
     auto_send_buffer_on_prog_change: bool
     auto_send_prog_to_device_on_save: bool
     trace: bool
+    rom_programs: list[int]
 
 
 class Device:
@@ -103,18 +104,6 @@ class Device:
     REFRESH_RATE_MS = 50
     HELP_URL = "https://github.com/violet-black/midiverb3"
 
-    PROG_MAP_TABLE = []
-    for n in range(128):
-        PROG_MAP_TABLE.extend(_dump_value(min(PROG_NUM + n, PROG_NUM * 2 - 1)))
-
-    """
-    Map presets 100-199 onto MIDI program numbers 0-99. This is required for two main reasons.
-    
-    - Presets below 100 are not editable anyways.
-    - There are no 'banks' on the device, so you can't otherwise select editable presets using MIDI because of
-    the max number of programs limitation (128).
-    """
-
     _bank: Bank
     _program_names: list[str]
     _settings: Settings
@@ -127,6 +116,7 @@ class Device:
         self._midi_thread: Thread = Thread(target=self._process_message_queue, daemon=True)
         self._midi_in = rtmidi.MidiIn()
         self._midi_out = rtmidi.MidiOut()
+        self.PROG_MAP_TABLE = []
         self.init()
         if self._settings.trace:
             self._send_message = _trace_midi(self._send_message)
@@ -168,6 +158,7 @@ class Device:
 
     def init(self) -> None:
         self.load_settings()
+        self.init_prog_map_table()
         self.open_midi_in()
         self.open_midi_out()
         if not Path(self._settings.bank_path).exists():
@@ -176,6 +167,31 @@ class Device:
             self.load_current_bank_from_file(self._settings.bank_path)
         self._midi_thread.start()
         self._queue.clear()
+
+    def init_prog_map_table(self):
+        """
+        Map presets 100-199 onto MIDI program numbers 0-99. This is required for two main reasons.
+
+        - Presets below 100 are not editable.
+        - There are no banks on the device, so you can't otherwise select any preset after 100.
+
+        Thus, MIDI program values 0-99 are mapped to the editable presets.
+        MIDI program values 100-127 are mapped to the first 28 of not editable presets just in case.
+
+        `editable_programs` - ids of editable programs
+        `rom_programs` - ids of non-editable programs
+        `PROG_MAP_TABLE` contains 128 program ids in Midiverb format as expected by the device and in final order.
+        """
+        editable_programs = [self.PROG_NUM + n for n in range(self.PROG_NUM)]
+        self.PROG_MAP_TABLE.clear()
+
+        for n in editable_programs:
+            self.PROG_MAP_TABLE.extend(_dump_value(n))
+
+        for n in self._settings.rom_programs:
+            self.PROG_MAP_TABLE.extend(_dump_value(n))
+
+        print(self.PROG_MAP_TABLE)
 
     def close(self) -> None:
         self._midi_thread.join(timeout=1.0)
@@ -208,6 +224,7 @@ class Device:
 
     def load_settings(self) -> None:
         _path = self.PATH / self.SETTINGS
+        rom_programs_default = [n for n in range(128 - self.PROG_NUM)]
         if not _path.exists():
             self._settings = Settings(
                 midi_in_port=None,
@@ -217,10 +234,15 @@ class Device:
                 auto_send_buffer_on_prog_change=False,
                 auto_send_prog_to_device_on_save=False,
                 trace=False,
+                rom_programs=rom_programs_default
             )
             return
+
         with open(_path, "r") as f:
             data = json.loads(f.read())
+            rom_programs = data.get('rom_programs', [])
+            for n, prog_num in enumerate(rom_programs):
+                rom_programs_default[n] = prog_num
             self._settings = Settings(
                 midi_in_port=data.get("midi_in_port"),
                 midi_out_port=data.get("midi_out_port"),
@@ -235,6 +257,7 @@ class Device:
                     "auto_send_prog_to_device", False
                 ),
                 trace=data.get("trace", False),
+                rom_programs=rom_programs_default
             )
 
     def save_settings(self) -> None:

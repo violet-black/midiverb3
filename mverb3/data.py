@@ -1,3 +1,5 @@
+"""Alesis Midiverb III special parameters."""
+
 EQ = [
     "0.16KHz",
     "0.33KHz",
@@ -75,34 +77,42 @@ REVERB_ALGORITHMS = [
 MODULATION_SOURCES = [
     {
         "name": "VOLUME PEDAL (#7)",
+        "display": "7",
         "description": "The common volume pedal found on some electronic keyboards can be used as a modulation controller (MIDI Controller #7)."
     },
     {
         "name": "PITCH BEND",
+        "display": "P",
         "description": "The pitch bend wheel or lever common on most synthesizers."
     },
     {
         "name": "MOD WHEEL (#1)",
+        "display": "1",
         "description": "The Mod Wheel common on most synthesizers is designated Controller #1 in the MIDI specification."
     },
     {
         "name": "NOTE NUMBER",
+        "display": "n",
         "description": "Any MIDI note from keyboard, sequencer, or drum machine."
     },
     {
         "name": "NOTE VELOCITY",
+        "display": "V",
         "description": "The target parameter will change in relation to how hard a key is struck."
     },
     {
         "name": "AFTER TOUCH",
+        "display": "A",
         "description": "After a note is depressed, a pressure on the key will cause a MIDI command."
     },
     {
         "name": "SUSTAIN PEDAL (#64)",
+        "display": "S",
         "description": "The common sustain pedal found on most electronic keyboards can be used as a modulation controller."
     },
     {
         "name": "BREATH (#2)",
+        "display": "b",
         "description": "The breath controller found on some electronic keyboards can be used as a modulation controller."
     }
 ]
@@ -110,30 +120,130 @@ MODULATION_SOURCES = [
 MODULATION_DESTINATIONS = [
     {
         "name": "Off",
+        "display": "OFF",
         "description": "No modulation."
     },
     {
         "name": "Reverb Decay",
+        "display": "rd",
         "description": "Length of time before the Reverb dies can be modulated."
     },
     {
         "name": "Delay Time",
+        "display": "dt",
         "description": "Length of time between repeats can be modulated"
     },
     {
         "name": "Delay Regeneration",
+        "display": "dr",
         "description": "Number of echo repeats can be modulated"
     },
     {
         "name": "Chorus Speed",
+        "display": "cS",
         "description": "How fast or slow the Chorus or Flange oscillates can be modulated"
     },
     {
         "name": "Reverb Level",
+        "display": "rL",
         "description": "The output of the Reverb can be remotely modulated"
     },
     {
         "name": "Delay Level",
+        "display": "dL",
         "description": "The output of the Delay can be remotely modulated"
+    }
+]
+
+ROUTING_ALGORITHMS = [
+    # 1
+    {
+        "paths": [["EQ", "CHRS", "DELAY", "REVERB"]],
+        "chrs_in_output": True,
+        "reverb_pre_delay": True
+    },
+    # 2
+    {
+        "paths": [["EQ", "CHRS", "REVERB"], ["EQ", "CHRS", "DELAY"]],
+        "chrs_in_output": True,
+        "reverb_pre_delay": False
+    },
+    # 3
+    {
+        "paths": [["EQ", "CHRS", "REVERB"], ["DELAY"]],
+        "chrs_in_output": True,
+        "reverb_pre_delay": False
+    },
+    # 4
+    {
+        "paths": [["EQ", "CHRS", "REVERB"], ["EQ", "DELAY"]],
+        "chrs_in_output": True,
+        "reverb_pre_delay": False
+    },
+    # 5
+    {
+        "paths": [["EQ", "REVERB"], ["CHRS", "DELAY"]],
+        "chrs_in_output": True,
+        "reverb_pre_delay": False
+    },
+    # 6
+    {
+        "paths": [["EQ", "DELAY"], ["CHRS", "REVERB"]],
+        "chrs_in_output": True,
+        "reverb_pre_delay": False
+    },
+    # 7
+    {
+        "paths": [["EQ", "CHRS", "DELAY", "REVERB"]],
+        "chrs_in_output": False,
+        "reverb_pre_delay": True
+    },
+    # 8
+    {
+        "paths": [["EQ", "CHRS", "REVERB"], ["EQ", "CHRS", "DELAY"]],
+        "chrs_in_output": False,
+        "reverb_pre_delay": False
+    },
+    # 9
+    {
+        "paths": [["EQ", "CHRS", "REVERB"], ["DELAY"]],
+        "chrs_in_output": False,
+        "reverb_pre_delay": False
+    },
+    # 10
+    {
+        "paths": [["EQ", "CHRS", "REVERB"], ["EQ", "DELAY"]],
+        "chrs_in_output": False,
+        "reverb_pre_delay": False
+    },
+    # 11
+    {
+        "paths": [["EQ", "REVERB"], ["CHRS", "DELAY"]],
+        "chrs_in_output": False,
+        "reverb_pre_delay": False
+    },
+    # 12
+    {
+        "paths": [["EQ", "DELAY"], ["CHRS", "REVERB"]],
+        "chrs_in_output": False,
+        "reverb_pre_delay": False
+    },
+    # 13
+    {
+        "paths": [["EQ", "DELAY", "REVERB"], ["CHRS"]],
+        "chrs_in_output": True,
+        "reverb_pre_delay": True
+    },
+    # 14
+    {
+        "paths": [["EQ", "CHRS", "DELAY"]],
+        "chrs_in_output": True,
+        "reverb_pre_delay": None
+    },
+    # 15
+    {
+        "paths": [["EQ", "CHRS", "DELAY"]],
+        "chrs_in_output": False,
+        "reverb_pre_delay": None
     }
 ]

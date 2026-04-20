@@ -514,7 +514,7 @@ class Ui_UIMainWindow(object):
 #endif // QT_CONFIG(shortcut)
         self.actionImport.setText(QCoreApplication.translate("UIMainWindow", u"Open", None))
 #if QT_CONFIG(tooltip)
-        self.actionBufferExport.setText(QCoreApplication.translate("UIMainWindow", u"Save Program", None))
+        self.actionBufferExport.setText(QCoreApplication.translate("UIMainWindow", u"Export Program", None))
 # if QT_CONFIG(shortcut)
         self.actionBufferExport.setShortcut(QCoreApplication.translate("UIMainWindow", u"Ctrl+X", None))
         self.actionImport.setToolTip(QCoreApplication.translate("UIMainWindow", u"Import a bank or a program", None))
